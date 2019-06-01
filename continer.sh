@@ -1,4 +1,4 @@
-source env.properties
+source container.properties
 # -------->>>>>>>>Bulk delete start <<<<<<<<<<-----------
 # 1. Export Token
 export token=$(curl -v -X GET -H "X-Storage-User: $user" -H "X-Storage-Pass: $password" $serverauth  2>&1 | grep X-Auth-Token | sed 's/< X-Auth-Token: //')
@@ -13,6 +13,7 @@ do
     sed -i "s|^|$container/|g" ./$container
     
     # 4. Bulk delete
-    curl -v -X DELETE -H "X-Auth-Token: $token" -H "Content-Type: text/plain" -T ./$container $server?bulk-delete &
+    echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Deleting container $container"
+    curl -v -X DELETE -H "X-Auth-Token: $token" -H "Content-Type: text/plain" -T ./$container $server?bulk-delete
 done
 # -------->>>>>>>>Bulk delete end <<<<<<<<<<-----------

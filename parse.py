@@ -1,23 +1,23 @@
-import sys, json;
+import sys, json
 import os
 import requests
+from functions import exportIntegration, importIntegration
 
-if (len(sys.argv) < 3) :
-    print('Usage: parse.py <file.json> <env.properties>')
+if (len(sys.argv) < 2) :
+    print('Usage: parse.py <env.properties>')
     exit()
 
-# Read integrations.json file
-fp = open(sys.argv[1], 'r')
-ints = json.load(fp)
-
 # Read env.json file
-fp = open(sys.argv[2], 'r')
+fp = open(sys.argv[1], 'r')
 env = json.load(fp)
 fp.close()
 
 baseUrl = env['server'] + '/ic/api/integration/v1/integrations/'
 headers = {'Accept' : 'application/json'}
 auth = (env['user'], env['password'])
+
+ints = requests.get(baseUrl, auth = auth, headers = headers).json()
+
 print('\n')
 print('totalResults: ' + str(ints['totalResults']) + '\n')
 for num in range (0, ints['totalResults']):
@@ -26,11 +26,6 @@ for num in range (0, ints['totalResults']):
     response = requests.get(url, auth = auth, headers = headers)
     if response.json()['status'] == 'ACTIVATED':
         print(str(num) + ': ' + id)
-        url = url + '/archive'
-        response = requests.get(url, auth = auth, headers = {'Accept' : 'application/octet-stream'})
-        if response.status_code == 200:
-            fp = open(id + '.iar','w+b')
-            fp.write(response.content)
-
+        exportIntegration(baseUrl, id, auth)
 
 

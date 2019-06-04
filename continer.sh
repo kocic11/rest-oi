@@ -1,4 +1,4 @@
-source container.properties
+source ./container.properties
 # -------->>>>>>>>Bulk delete start <<<<<<<<<<-----------
 # 1. Export Token
 export token=$(curl -v -X GET -H "X-Storage-User: $user" -H "X-Storage-Pass: $password" $serverauth  2>&1 | grep X-Auth-Token | sed 's/< X-Auth-Token: //')

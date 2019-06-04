@@ -7,6 +7,27 @@ curl --silent -u $user:$password -o integrations.json \
  -X GET \
  $server/ic/api/integration/v1/integrations
 
+curl -v -u $user:$password -F "file"="@./EH_TEST%7C01.00.0000.iar" \
+ -H "Accept: application/json" \
+ -X PUT \
+ $server/ic/api/integration/v1/integrations/archive
+
+# Deactivate integration
+curl -v -u $user:$password \
+ -H "Content-Type:application/json" \
+ -H "X-HTTP-Method-Override:PATCH" \
+ -d @configured.json \
+ -X POST \
+ $server/ic/api/integration/v1/integrations/EH_TEST%7C01.00.0000
+
+# Activate configuration
+curl -v -u $user:$password \
+ -H "Content-Type:application/json" \
+ -H "X-HTTP-Method-Override:PATCH" \
+ -d @activated.json \
+ -X POST \
+ $server/ic/api/integration/v1/integrations/EH_TEST%7C01.00.0000
+
 # # Retrieve Integration
 # curl --silent -u $user:$password -o $id.json \
 #  -H "Accept: application/json" \
@@ -28,6 +49,6 @@ curl --silent -u $user:$password -o integrations.json \
 #  -X GET \
 #  $server/ic/api/integration/v1/integrations?q%3D%7Bstatus%3A%27ACTIVATED%27%7D
  
-python3 parse.py ./integrations.json ./env.json
+# python3 parse.py ./integrations.json ./env.json
 
 

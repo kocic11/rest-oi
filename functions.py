@@ -43,10 +43,10 @@ def importIntegration(baseUrl, auth, file):
         print('Server error.')
         response.raise_for_status()
     
-def activateIntegration(baseUrl, auth, id):
-    '''Activate integration.'''
+def activateIntegration(baseUrl, auth, id, tracing):
+    '''Activate integration and enable tracing.'''
     url = baseUrl + '/' + id
-    payload = {'status':'ACTIVATED'}
+    payload = {'status':'ACTIVATED', 'payloadTracingEnabledFlag': tracing}
     changeStatus(url, auth, payload)
 
 def deactivateIntegration(baseUrl, auth, id):
@@ -59,9 +59,13 @@ def changeStatus(url, auth, payload):
     '''Change integration status.'''
     response = requests.post(url, auth = auth, headers = {'Content-Type' : 'application/json', 'X-HTTP-Method-Override' : 'PATCH'}, data = json.dumps(payload))
     if response.status_code == 200:
-        print('Status changed.')
-    else:
-        response.raise_for_status()
+        print(f'Status changed to {payload["status"]}')
+        return
+    if response.status_code == 412:
+        print("Already activated/deactivated or can't be activated/deactivated")
+        return
+        
+    response.raise_for_status()
 
 def retrieveConnections(baseUrl, auth):
     ''' Retrieve a list of connections.'''
@@ -93,7 +97,7 @@ def uploadConnectionPropertyAttachment(url, auth, id, connPropName, file):
     url = url + '/' + id + '/attachments/' + connPropName
     files = {'file': open(file, 'rb')}
     response = requests.post(url, auth = auth, files = files)
-    if response.status_code == 200:
+    if response.status_code in [200, 400]:
         return
     
     response.raise_for_status()

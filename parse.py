@@ -1,10 +1,114 @@
-import sys, json
-import os
-import requests
+import sys, json, os, requests
 from requests.exceptions import HTTPError
 from functions import *
 
-if (len(sys.argv) < 2) :
+def getActiveIntegrations(url, auth, headers):
+    '''Get all active integrations from source.'''
+    try:
+        integrations = requests.get(sourceUrl, auth = sourceAuth, headers = headers).json()       
+        activeIntegrations = {}
+        for integration in integrations['items']:
+            id = (integration['id']).replace('|', '%7C')
+            if integration['status'] == 'ACTIVATED':
+                print(f'Export/Import integration: {id}')
+                activeIntegrations[id] = integration
+        return  activeIntegrations
+    except HTTPError as http_err:
+        print(f'Http error occurred: {http_err}')
+        exit
+    except Exception as err:
+        print(f'Other error occurred: {err}')
+        exit
+
+def configureConnections(integrations, env, targetConnectionsUrl, targetAuth):
+    '''Configure the connections used by source integrations at target'''
+    # Get integration connections and add them to the list of connections
+    connections = []
+    for integration in integrations:
+        for conn in integration['endPoints']:
+            id = conn['connection']['id']
+            link = conn['connection']['links'][0]['href']
+            connections[connId] = link
+
+    for id in connections:
+        # Payload containes connection properties
+        payload = {}
+        # Attachment properties
+        attachment = {}
+        if id in env:
+            for group in env[id]:
+                # Group of properties name
+                properties = env[id][group]
+                # Group of related properties
+                if group != 'attachment':
+                    propertiesGroup = []
+                    for propertyName in properties:
+                        property = {}
+                        property['propertyName'] = propertyName
+                        property['propertyValue'] = properties[propertyName]
+                        propertiesGroup.append(property)
+                    payload[group] = propertiesGroup
+                else:
+                    for propertyName in properties:
+                        attachment = {}
+                        attachment['propertyName'] = propertyName
+                        attachment['propertyValue'] = properties[propertyName]
+            print(f'Updating connection {id}: {payload}')
+            try:
+                updateConnection(targetConnectionsUrl, targetAuth, id, payload)
+                # Doesn't work for ATP connections:
+                # Bug 29701192 : Upload Connection Property Attachment REST API not working for ATP Connection
+                uploadConnectionPropertyAttachment(targetConnectionsUrl, targetAuth, id, attachment['propertyName'], attachment['propertyValue'])
+            except HTTPError as http_err:
+                print(f'Http error occurred: {http_err}')
+                pass
+            except Exception as err:
+                print(f'Other error occurred: {err}')
+                pass
+
+def exportImportIntegrations(integrations, sourceUrl, targetUrl, sourceAuth, targetAuth):
+    '''Export integrations from source and import them to target'''
+    for integration in integrations:
+        id = integrations['id']
+        # # Only export/import active integrations
+        # if integration['status'] == 'ACTIVATED':
+        print(f'Export/Import integration: {id}')
+        # activeIntegrations.append(id)
+        try:
+            # Export integration from source
+            exportIntegration(sourceUrl, id, sourceAuth)
+            
+            # Import integration to target
+            importIntegration(targetUrl, targetAuth, id + '.iar')
+
+            # # Get integration connections and add them to the list of connections
+            # for conn in integration['endPoints']:
+            #     connId = conn['connection']['id']
+            #     connLink = conn['connection']['links'][0]['href']
+            #     connections[connId] = connLink
+        except HTTPError as http_err:
+            print(f'Http error occurred: {http_err}')
+            pass
+        except Exception as err:
+            print(f'Other error occurred: {err}')
+            pass
+
+def rectivateIntegrations(integrations, targetUrl, targetAuth):
+    ''' Reactivate imported integrations.'''
+    for id in integrations:
+        print(f'Reactivate integration {id}')
+        try:
+            deactivateIntegration(targetUrl, targetAuth, id)
+            activateIntegration(targetUrl, targetAuth, id, 'true')
+        except HTTPError as http_err:
+            print(f'Http error occurred: {http_err}')
+            pass
+        except Exception as err:
+            print(f'Other error occurred: {err}')
+            pass
+
+lenArgs = len(sys.argv)
+if (lenArgs < 2) :
     print('Usage: parse.py <env.properties>')
     exit()
 
@@ -13,146 +117,74 @@ fp = open(sys.argv[1], 'r')
 env = json.load(fp)
 fp.close()
 
-source = env['source'] + env['integrations']
-target = env['target'] + env['integrations']
-sourceConnections = env['source'] + env['connections']
-targetConnections = env['target'] + env['connections']
+sourceUrl = env['sourceUrl'] + env['integrations']
+targetUrl = env['targetUrl'] + env['integrations']
+sourceConnections = env['sourceUrl'] + env['connections']
+targetConnectionsUrl = env['targetUrl'] + env['connections']
 headers = {'Accept' : 'application/json'}
-auth = (env['user'], env['password'])
+sourceAuth = (env['sourceUser'], env['sourcePassword'])
+targetAuth = (env['targetUser'], env['targetPassword'])
 
-# Get all integrations from source
-integrations = requests.get(source, auth = auth, headers = headers).json()
-
-# List of all connections used by source integrations
-connections = {}
-
-for integration in integrations['items']:
-    id = (integration['id']).replace('|', '%7C')
-    if integration['status'] == 'ACTIVATED':
-        print(id)
-        try:
-            # exportIntegration(source, id, auth)
-            # importIntegration(target, auth, id + '.iar')
+activeIntegrations = getActiveIntegrations(sourceUrl, sourceAuth, headers)
+# exportImportIntegrations(activeIntegrations, sourceUrl, targetUrl, sourceAuth, targetAuth)
+# configureConnections(activeIntegrations, env, targetConnectionsUrl, targetAuth)
+# rectivateIntegrations(activeIntegrations, targetUrl, targetAuth)
+rectivateIntegrations(activeIntegrations, sourceUrl, targetAuth)
+# Configure the connections
+# for id in connections:
+#     # Payload containes connection properties
+#     payload = {}
+    
+#     attachment = {}
+#     if id in env:
+#         for group in env[id]:
+#             keyValue = {}
+#             properties = env[id][group]
+#             # Group of related properties
             
-            
-            for conn in integration['endPoints']:
-                connId = conn['connection']['id']
-                connLink = conn['connection']['links'][0]['href']
-                connections[connId] = connLink
-            
-
-            # activateIntegration(target, auth, id)
-            # deactivateIntegration(source, auth, id)
-            # retrieveConnections(sourceConnections, auth)
-        except HTTPError as http_err:
-            print(f'Http error occurred: {http_err}')
-        except Exception as err:
-            print(f'Other error occurred: {err}')
-
-for id in connections:
-    # Payload containes connection properties
-    payload = {}
-    # Group of related properties
-    propertiesGroup = []
-
-    for properties in env[id]:
-        for property in env[id][properties]:
-            keyValue = {}
-            keyValue['propertyName'] = property
-            keyValue['propertyValue'] = env[id][properties][property]
-            if properties == 'attachment':
-                try:
-                    # Doesn't work for ATP connections:
-                    # Bug 29701192 : Upload Connection Property Attachment REST API not working for ATP Connection
-                    uploadConnectionPropertyAttachment(targetConnections, auth, id, keyValue['propertyName'], keyValue['propertyValue'])
-                except HTTPError as http_err:
-                    print(f'Http error occurred: {http_err}')
-                    pass
-                except Exception as err:
-                    print(f'Other error occurred: {err}')
-                    pass
-            propertiesGroup.append(keyValue)
-            payload[properties] = propertiesGroup
-            try:
-                updateConnection(targetConnections, auth, id, payload)
-            except HTTPError as http_err:
-                print(f'Http error occurred: {http_err}')
-                pass
-            except Exception as err:
-                print(f'Other error occurred: {err}')
-                pass
-
-        # securityProperties = []
-        # securityProperty = {}
-        # for property in env[id]['securityProperties']:
-        #     securityProperty = {}
-        #     securityProperty['propertyName'] = property
-        #     securityProperty['propertyValue'] = env[id]['securityProperties'][property]
-        #     securityProperties.append(securityProperty)
-        #     payload['securityProperties'] = securityProperties
-
+#             if group != 'attachment':
+#                 for p in properties:
+#                     propertiesGroup = []
+#                     keyValue['propertyName'] = p
+#                     keyValue['propertyValue'] = properties[p]
+#                     propertiesGroup.append(keyValue)
+#                     payload[group] = propertiesGroup
+#                 print(payload)
+#             # securityProperties = []
+#         # securityProperty = {}
+#         # for property in env[id]['securityProperties']:
+#         #     securityProperty = {}
+#         #     securityProperty['propertyName'] = property
+#         #     securityProperty['propertyValue'] = env[id]['securityProperties'][property]
+#         #     securityProperties.append(securityProperty)
+#         #     payload['securityProperties'] = securityProperties
+#             else:
+#                 for p in property:
+#                     attachment['propertyName'] = p
+#                     attachment['propertyValue'] = property[p]
+    
+#         print(payload)
         # try:
         #     updateConnection(targetConnections, auth, id, payload)
-        #     for property in env[id]['attachment']:
-        #         uploadConnectionPropertyAttachment(targetConnections, auth, id, property, env[id]['attachment'][property])
+        #     # Doesn't work for ATP connections:
+        #     # Bug 29701192 : Upload Connection Property Attachment REST API not working for ATP Connection
+        #     uploadConnectionPropertyAttachment(targetConnections, auth, id, attachment['propertyName'], attachment['propertyValue'])
         # except HTTPError as http_err:
         #     print(f'Http error occurred: {http_err}')
         #     pass
         # except Exception as err:
         #     print(f'Other error occurred: {err}')
         #     pass
-    # if id == 'ERP_TEST_CONN':
-    #     payload = {}
-    #     connectionProperties = []
-    #     securityProperties = []
-    #     for connectionProperty in connection['connectionProperties']:
-    #         if connectionProperty['propertyName'] == 'targetWSDLURL':
-    #             connectionProperty['propertyValue'] = 'https://ekmt-dev3.fa.us6.oraclecloud.com/fscmService/ServiceCatalogService?WSDL'
-    #             connectionProperties.append(connectionProperty)
-            
-    #     payload['connectionProperties'] = connectionProperties
 
-    #     for securityPolicyInfo in connection['securityPolicyInfo']:
-    #         if securityPolicyInfo['securityPolicy'] == 'USERNAME_PASSWORD_TOKEN':
-    #             payload['securityPolicy'] = 'USERNAME_PASSWORD_TOKEN'
-    #             for securityProperty in securityPolicyInfo['securityProperties']:
-    #                 if securityProperty['propertyName'] == 'username':
-    #                     securityProperty['propertyValue'] = 'integrationuser'
-    #                     securityProperties.append(securityProperty)
-    #                 if securityProperty['propertyName'] == 'password':
-    #                     securityProperty['propertyValue'] = 'Welcome1'
-    #                     securityProperties.append(securityProperty)
-                        
-    #     payload['securityProperties'] = securityProperties
-    #     updateConnection(targetConnections, auth, id, payload)
-
-    # if id == 'ATP_PERF_COMMON':
-    #     payload = {}
-    #     connectionProperties = []
-    #     securityProperties = []
-    #     for connectionProperty in connection['connectionProperties']:
-    #         if connectionProperty['propertyName'] == 'ServiceName':
-    #             connectionProperty['propertyValue'] = 'atpstage_low'
-    #             connectionProperties.append(connectionProperty)
-            
-    #     payload['connectionProperties'] = connectionProperties
-
-    #     for securityPolicyInfo in connection['securityPolicyInfo']:
-    #         if securityPolicyInfo['securityPolicy'] == 'JDBC_OVER_SSL':
-    #             payload['securityPolicy'] = 'JDBC_OVER_SSL'
-    #             for securityProperty in securityPolicyInfo['securityProperties']:
-    #                 if securityProperty['propertyName'] == 'WALLETPASSWORD':
-    #                     securityProperty['propertyValue'] = 'm&7RCzZcK6jLXh'
-    #                     securityProperties.append(securityProperty)
-    #                 if securityProperty['propertyName'] == 'UserName':
-    #                     securityProperty['propertyValue'] = 'airbnb_common'
-    #                     securityProperties.append(securityProperty)
-    #                 if securityProperty['propertyName'] == 'Password':
-    #                     securityProperty['propertyValue'] = 'D55k8qze4Bx3LT49'
-    #                     securityProperties.append(securityProperty)
-                        
-    #     payload['securityProperties'] = securityProperties
-    #     updateConnection(targetConnections, auth, id, payload)
-    #     uploadConnectionPropertyAttachment(targetConnections, auth, id, 'WALLET', 'ATPSTAGE.zip')
-
-
+# # Activate imported integrations
+# for id in activeIntegrations:
+#     try:
+#         print(id)
+#         deactivateIntegration(source, auth, id)
+#         activateIntegration(source, auth, id, 'true')
+#     except HTTPError as http_err:
+#         print(f'Http error occurred: {http_err}')
+#         pass
+#     except Exception as err:
+#         print(f'Other error occurred: {err}')
+#         pass

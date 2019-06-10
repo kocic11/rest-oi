@@ -2,17 +2,16 @@ import sys, json, os, requests
 from requests.exceptions import HTTPError
 from functions import *
 
-def getActiveIntegrations(url, auth, headers):
-    '''Get all active integrations from source.'''
+def getIntegrations(url, auth, headers, status):
+    '''Get integrations based on status.'''
     try:
-        integrations = requests.get(url, auth = auth, headers = headers).json()       
-        activeIntegrations = {}
-        for integration in integrations['items']:
-            id = (integration['id']).replace('|', '%7C')
-            if integration['status'] == 'ACTIVATED':
-                print(f'Export/Import integration: {id}')
-                activeIntegrations[id] = integration
-        return  activeIntegrations
+        response = requests.get(url, auth = auth, headers = headers).json()       
+        integrations = {}
+        for integration in response['items']:
+            if integration['status'] == status:
+                id = (integration['id']).replace('|', '%7C')
+                integrations[id] = integration
+        return  integrations
     except HTTPError as http_err:
         print(f'Http error occurred: {http_err}')
         exit
@@ -23,11 +22,11 @@ def getActiveIntegrations(url, auth, headers):
 def configureConnections(integrations, env, connectionsUrl, auth):
     '''Configure the connections used by source integrations at target'''
     # Get integration connections and add them to the list of connections
-    connections = []
-    for integration in integrations:
-        for conn in integration['endPoints']:
-            id = conn['connection']['id']
-            link = conn['connection']['links'][0]['href']
+    connections = {}
+    for id in integrations:
+        for connection in integrations[id]['endPoints']:
+            connId = connection['connection']['id']
+            link = connection['connection']['links'][0]['href']
             connections[connId] = link
 
     for id in connections:
@@ -39,7 +38,6 @@ def configureConnections(integrations, env, connectionsUrl, auth):
             for group in env[id]:
                 # Group of properties name
                 properties = env[id][group]
-                # Group of related properties
                 if group != 'attachment':
                     propertiesGroup = []
                     for propertyName in properties:
@@ -67,9 +65,8 @@ def configureConnections(integrations, env, connectionsUrl, auth):
                 pass
 
 def exportIntegrations(integrations, url, auth):
-    '''Export integrations from source and import them to target'''
-    for integration in integrations:
-        id = integrations['id']
+    '''Export integrations'''
+    for id in integrations:
         print(f'Export integration: {id}')
         try:
             # Export integration
@@ -82,12 +79,10 @@ def exportIntegrations(integrations, url, auth):
             pass
 
 def importIntegrations(integrations, url, auth):
-    '''Export integrations from source and import them to target'''
-    for integration in integrations:
-        id = integrations['id']
-        print(f'Export/Import integration: {id}')
+    '''Import integrations'''
+    for id in integrations:
+        print(f'Import integration: {id}')
         try:
-            # Import integration to target
             importIntegration(url, auth, id + '.iar')
         except HTTPError as http_err:
             print(f'Http error occurred: {http_err}')
@@ -98,7 +93,7 @@ def importIntegrations(integrations, url, auth):
 
 
 def activateIntegrations(integrations, url, auth, tracing):
-    ''' Activate integrations.'''
+    '''Activate integrations.'''
     for id in integrations:
         print(f'Activate integration {id}')
         try:
@@ -143,13 +138,13 @@ sourceAuth = (env['sourceUser'], env['sourcePassword'])
 targetAuth = (env['targetUser'], env['targetPassword'])
 
 # Get active configurations
-activeIntegrations = getActiveIntegrations(sourceUrl, sourceAuth, headers)
+activeIntegrations = getIntegrations(sourceUrl, sourceAuth, headers, 'ACTIVATED')
 
 # Export integrations 
-exportIntegrations(activeIntegrations, sourceUrl, sourceAuth)
+#exportIntegrations(activeIntegrations, sourceUrl, sourceAuth)
 
 # Import integrations
-importIntegrations(activeIntegrations, targetUrl, targetAuth)
+#importIntegrations(activeIntegrations, targetUrl, targetAuth)
 
 # COnfigure connections
 configureConnections(activeIntegrations, env, targetConnectionsUrl, targetAuth)

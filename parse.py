@@ -19,7 +19,7 @@ def getIntegrations(url, auth, headers, status):
         print(f'Other error occurred: {err}')
         exit
 
-def configureConnections(integrations, env, connectionsUrl, auth):
+def updateConnections(integrations, env, connectionsUrl, auth):
     '''Configure the connections used by source integrations at target'''
     # Get integration connections and add them to the list of connections
     connections = {}
@@ -51,6 +51,7 @@ def configureConnections(integrations, env, connectionsUrl, auth):
                         attachment = {}
                         attachment['propertyName'] = propertyName
                         attachment['propertyValue'] = properties[propertyName]
+                        
             print(f'Updating connection {id}: {payload}')
             try:
                 updateConnection(connectionsUrl, auth, id, payload)
@@ -138,19 +139,19 @@ sourceAuth = (env['sourceUser'], env['sourcePassword'])
 targetAuth = (env['targetUser'], env['targetPassword'])
 
 # Get active configurations
-activeIntegrations = getIntegrations(sourceUrl, sourceAuth, headers, 'ACTIVATED')
+integrations = getIntegrations(sourceUrl, sourceAuth, headers, 'ACTIVATED')
 
 # Export integrations 
-#exportIntegrations(activeIntegrations, sourceUrl, sourceAuth)
+#exportIntegrations(integrations, sourceUrl, sourceAuth)
 
 # Import integrations
-#importIntegrations(activeIntegrations, targetUrl, targetAuth)
+#importIntegrations(integrations, targetUrl, targetAuth)
 
 # COnfigure connections
-configureConnections(activeIntegrations, env, targetConnectionsUrl, targetAuth)
+updateConnections(integrations, env, targetConnectionsUrl, targetAuth)
 
 # Deactivate integrations
-deactivateIntegrations(activeIntegrations, sourceUrl, sourceAuth)
+deactivateIntegrations(integrations, sourceUrl, sourceAuth)
 
 # Activate integrations and enable tracing
-activateIntegrations(activeIntegrations, sourceUrl, sourceAuth, 'true')
+activateIntegrations(integrations, sourceUrl, sourceAuth, 'true')

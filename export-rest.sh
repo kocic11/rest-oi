@@ -51,4 +51,8 @@ curl -v -u $user:$password \
  
 # python3 parse.py ./integrations.json ./env.json
 
-
+# Retrieve Integrations
+curl --silent -u $user:$password -o integrations.json \
+ -H "Accept: application/json" \
+ -X GET \
+ $server/ic/api/integration/v1/connections/ESSSERVICE

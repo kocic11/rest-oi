@@ -1,0 +1,11 @@
+*.properties
+*.json
+*.iar
+findId.py
+list
+*DEV3
+.vscode
+__*
+*.dat
+*.zip
+*_*_*

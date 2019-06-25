@@ -5,7 +5,7 @@ import sys
 import requests
 from requests.exceptions import HTTPError
 
-from functions import getIntegrations, getLookups, getConnection, getConnections, exportIntegrations, exportLookups
+from functions import getIntegrations, getLookups, getConnection, getConnections, exportIntegrations, exportLookups, updateConnections, deactivateIntegrations, activateIntegrations
 
 # Begin
 lenArgs = len(sys.argv)
@@ -46,10 +46,10 @@ fp = open('connections.json','w')
 fp.write(json.dumps(connections, indent=4))
 fp.close()
 
-connection = getConnection(connections['ODI_FILE_PICKUP'], sourceAuth)
-fp = open('ODI_FILE_PICKUP.json','w')
-fp.write(json.dumps(connection, indent=4))
-fp.close()
+# connection = getConnection(connections['ODI_FILE_PICKUP'], sourceAuth)
+# fp = open('ODI_FILE_PICKUP.json','w')
+# fp.write(json.dumps(connection, indent=4))
+# fp.close()
 
 # exportIntegration(sourceIntegrations, sourceAuth, 'SCHEDULE_FBDI%7C03.20.0000')
 # deactivateIntegration(targetIntegrations, targetAuth, 'SCHEDULE_FBDI%7C03.10.0000')
@@ -57,29 +57,29 @@ fp.close()
 # activateIntegration(targetIntegrations, targetAuth, 'SCHEDULE_FBDI%7C03.20.0000', 'true')
 
 # Export integrations 
-exportIntegrations(integrations, sourceIntegrations, sourceAuth)
+# exportIntegrations(integrations, sourceIntegrations, sourceAuth)
 
 # Export lookups 
-exportLookups(lookups, sourceLookups, sourceAuth)
+# exportLookups(lookups, sourceLookups, sourceAuth)
 
 # Import lookups 
 # importLookups(lookups, targLookups, targetAuthAuth)
 
 # Configure connections
-# updateConnections(connections, env, targetConnections, targetAuth)
+updateConnections(connections, sourceConnections, sourceAuth, env)
 
 # # Pause integrations
 # pauseSchedule(sourceIntegrations, sourceAuth, 'SCHEDULE_PAAS_METADATA_REFRESH%7C01.80.0000')
 # pauseSchedule(sourceIntegrations, sourceAuth, 'EXCHANGE_RATES_OLD%7C02.00.0000')
 
 # # Deactivate integrations
-# deactivateIntegrations(integrations, targetIntegrations, targetAuth)
+deactivateIntegrations(integrations, sourceIntegrations, sourceAuth)
 
 # Import integrations
 # importIntegrations(integrations, targetIntegrations, targetAuth)
 
 # Activate integrations and enable tracing
-# activateIntegrations(integrations, targetIntegrations, targetAuth, 'true')
+activateIntegrations(integrations, sourceIntegrations, sourceAuth, 'true')
 
 # # Resume integrations
 # resumeSchedule(sourceIntegrations, sourceAuth, 'SCHEDULE_PAAS_METADATA_REFRESH%7C01.80.0000')

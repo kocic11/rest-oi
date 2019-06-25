@@ -32,7 +32,12 @@ def __importIntegration(baseUrl, auth, file):
         if response.status_code == 204:
             print('Integration replaced.')
             return
-    
+
+    # Successful operation
+    if response.status_code == 204:
+        print('Integration replaced.')
+        return
+
     if response.status_code == 400:
         print('No file is uploaded.')
         response.raise_for_status()
@@ -108,11 +113,15 @@ def getConnection(url, auth):
     
     response.raise_for_status()
 
-def __updateConnection(url, auth, name, payload):
+def __updateConnection(url, auth, id, payload):
     ''' Update a connection.'''
-    url = url + '/' + name
+    url = url + '/' + id
     response = requests.post(url, auth = auth, headers = {'X-HTTP-Method-Override' : 'PATCH', 'Content-Type' : 'application/json'}, data = json.dumps(payload))
     if response.status_code in [200, 400]:
+        return
+    
+    if response.status_code == 423:
+        print(f'Connection {id} is locked by another user and cannot be processed right now.')
         return
     
     response.raise_for_status()
@@ -124,6 +133,10 @@ def __uploadConnectionPropertyAttachment(url, auth, id, connPropName, file):
     response = requests.post(url, auth = auth, files = files)
     if response.status_code in [200, 400]:
         return
+
+    if response.status_code == 423:
+        print(f'Connection {id} is locked by another user and cannot be processed right now.')
+        return    
     
     response.raise_for_status()
 
@@ -199,24 +212,30 @@ def updateConnections(connections, url, auth, env):
                         property['propertyValue'] = properties[propertyName]
                         propertiesGroup.append(property)
                     payload[group] = propertiesGroup
+                    
                 else:
                     for propertyName in properties:
                         attachment = {}
                         attachment['propertyName'] = propertyName
                         attachment['propertyValue'] = properties[propertyName]
-                        
-            print(f'Updating connection {id}: {payload}')
-            # try:
-            #     updateConnection(url, auth, id, payload)
-            #     # Doesn't work for ATP connections:
-            #     # Bug 29701192 : Upload Connection Property Attachment REST API not working for ATP Connection
-            #     uploadConnectionPropertyAttachment(url, auth, id, attachment['propertyName'], attachment['propertyValue'])
-            # except HTTPError as http_err:
-            #     print(f'Http error occurred: {http_err}')
-            #     pass
-            # except Exception as err:
-            #     print(f'Other error occurred: {err}')
-            #     pass
+
+            try:
+                
+                if payload:
+                    print(f'Updating connection {id}: {payload}')
+                    __updateConnection(url, auth, id, payload)
+                
+                if attachment:
+                    print(f'Updating connection {id}: {attachment}')
+                    # Doesn't work for ATP connections:
+                    # Bug 29701192 : Upload Connection Property Attachment REST API not working for ATP Connection
+                    __uploadConnectionPropertyAttachment(url, auth, id, attachment['propertyName'], attachment['propertyValue'])
+            except HTTPError as http_err:
+                print(f'Http error occurred: {http_err}')
+                pass
+            except Exception as err:
+                print(f'Other error occurred: {err}')
+                pass
 
 def exportIntegrations(integrations, url, auth):
     '''Export integrations'''
@@ -224,7 +243,7 @@ def exportIntegrations(integrations, url, auth):
         print(f'Export integration: {id}')
         try:
             # Export integration
-            __exportIntegration(url, id, auth)
+            __exportIntegration(url, auth, id)
         except HTTPError as http_err:
             print(f'Http error occurred: {http_err}')
             pass

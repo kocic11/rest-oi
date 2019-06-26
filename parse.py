@@ -5,7 +5,7 @@ import sys
 import requests
 from requests.exceptions import HTTPError
 
-from functions import getIntegrations, getLookups, getConnection, getConnections, exportIntegrations, exportLookups, updateConnections, deactivateIntegrations, activateIntegrations
+from functions import getIntegrations, getLookups, getConnection, getConnections, exportIntegrations, exportLookups, updateConnections, deactivateIntegrations, activateIntegrations, __updateSchedule
 
 # Begin
 lenArgs = len(sys.argv)
@@ -46,6 +46,9 @@ fp = open('connections.json','w')
 fp.write(json.dumps(connections, indent=4))
 fp.close()
 
+payload = {"name": "icalExpression", "value": "FREQ=DAILY;BYHOUR=3;BYMINUTE=0;BYSECOND=0;"}
+__updateSchedule(sourceIntegrations, sourceAuth, 'EXCHANGE_RATES_OLD%7C02.00.0000', payload)
+
 # connection = getConnection(connections['ODI_FILE_PICKUP'], sourceAuth)
 # fp = open('ODI_FILE_PICKUP.json','w')
 # fp.write(json.dumps(connection, indent=4))
@@ -57,7 +60,7 @@ fp.close()
 # activateIntegration(targetIntegrations, targetAuth, 'SCHEDULE_FBDI%7C03.20.0000', 'true')
 
 # Export integrations 
-# exportIntegrations(integrations, sourceIntegrations, sourceAuth)
+exportIntegrations(integrations, sourceIntegrations, sourceAuth)
 
 # Export lookups 
 # exportLookups(lookups, sourceLookups, sourceAuth)

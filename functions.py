@@ -152,7 +152,7 @@ def __exportLookup(baseUrl, auth, id):
     else:
         response.raise_for_status()
 
-def __importLookup(baseUrl, id, auth):
+def __importLookup(baseUrl, auth, id):
     '''Export lookup with a given id'''
     url = baseUrl + '/' + id + '/archive'
     response = requests.get(url, auth = auth, headers = {'Accept' : 'application/octet-stream'})
@@ -163,6 +163,16 @@ def __importLookup(baseUrl, id, auth):
         fp.close()
     else:
         response.raise_for_status()
+
+def __updateSchedule(baseUrl, auth, id, payload):
+    '''Update schedule parameter for the schedule'''
+    url = baseUrl + '/' + id + '/schedule/parameters'
+    response = requests.patch(url, auth = auth, headers = {'Content-Type' : 'application/json'}, data = json.dumps(payload))
+    if response.status_code in [200, 412]:
+        print(f'{id} schedule updated')
+        return
+
+    response.raise_for_status()
 
 ############ Collections #######################
 def getIntegrations(url, auth, headers, status):

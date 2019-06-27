@@ -140,6 +140,19 @@ def __uploadConnectionPropertyAttachment(url, auth, id, connPropName, file):
     
     response.raise_for_status()
 
+def __updateMetadata(url, auth, id):
+    '''Refresh Metadata for a Connection'''
+    url = url + '/' + id + '/metadata'
+    response = requests.post(url, auth = auth, headers = {'Content-Type' : 'application/json'})
+    if response.status_code in [200, 204, 400]:
+        return
+    
+    if response.status_code in [412, 423]:
+        print(f'Connection {id} is locked by another user and cannot be processed right now.')
+        return
+    
+    response.raise_for_status()
+
 def __exportLookup(baseUrl, auth, id):
     '''Export lookup with a given id'''
     url = baseUrl + '/' + id + '/archive'
@@ -152,17 +165,17 @@ def __exportLookup(baseUrl, auth, id):
     else:
         response.raise_for_status()
 
-def __importLookup(baseUrl, auth, id):
-    '''Export lookup with a given id'''
-    url = baseUrl + '/' + id + '/archive'
-    response = requests.get(url, auth = auth, headers = {'Accept' : 'application/octet-stream'})
-    if response.status_code == 200:
-        print(response.text)
-        fp = open(id + '.csv','w')
-        fp.write(response.text)
-        fp.close()
-    else:
-        response.raise_for_status()
+# def __importLookup(baseUrl, auth, id):
+#     '''Export lookup with a given id'''
+#     url = baseUrl + '/' + id + '/archive'
+#     response = requests.get(url, auth = auth, headers = {'Accept' : 'application/octet-stream'})
+#     if response.status_code == 200:
+#         print(response.text)
+#         fp = open(id + '.csv','w')
+#         fp.write(response.text)
+#         fp.close()
+    
+#     response.raise_for_status()
 
 def __updateSchedule(baseUrl, auth, id, payload):
     '''Update schedule parameter for the schedule'''
@@ -183,6 +196,7 @@ def getIntegrations(url, auth, headers, status):
         for integration in response['items']:
             if integration['status'] == status:
                 id = (integration['id']).replace('|', '%7C')
+                print(f'{id}')
                 integrations[id] = integration
         return  integrations
     except HTTPError as http_err:
@@ -230,7 +244,6 @@ def updateConnections(connections, url, auth, env):
                         attachment['propertyValue'] = properties[propertyName]
 
             try:
-                
                 if payload:
                     print(f'Updating connection {id}: {payload}')
                     __updateConnection(url, auth, id, payload)
@@ -240,6 +253,8 @@ def updateConnections(connections, url, auth, env):
                     # Doesn't work for ATP connections:
                     # Bug 29701192 : Upload Connection Property Attachment REST API not working for ATP Connection
                     __uploadConnectionPropertyAttachment(url, auth, id, attachment['propertyName'], attachment['propertyValue'])
+
+                __updateMetadata(url, auth, id)
             except HTTPError as http_err:
                 print(f'Http error occurred: {http_err}')
                 pass

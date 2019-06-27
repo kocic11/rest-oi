@@ -5,7 +5,7 @@ import sys
 import requests
 from requests.exceptions import HTTPError
 
-from functions import getIntegrations, getLookups, getConnection, getConnections, exportIntegrations, exportLookups, updateConnections, deactivateIntegrations, activateIntegrations, __updateSchedule
+from functions import __updateSchedule, getIntegrations, getLookups, getConnections, exportIntegrations, updateConnections, deactivateIntegrations, importIntegrations, activateIntegrations
 
 # Begin
 lenArgs = len(sys.argv)
@@ -29,7 +29,7 @@ sourceAuth = (env['sourceUser'], env['sourcePassword'])
 targetAuth = (env['targetUser'], env['targetPassword'])
 
 # Get active configurations
-integrations = getIntegrations(sourceIntegrations, sourceAuth, headers, 'ACTIVATED')
+integrations = getIntegrations(targetIntegrations, targetAuth, headers, 'ACTIVATED')
 
 # Write integrations JSON file
 fp = open('integrations.json','w')
@@ -46,8 +46,11 @@ fp = open('connections.json','w')
 fp.write(json.dumps(connections, indent=4))
 fp.close()
 
-payload = {"name": "icalExpression", "value": "FREQ=DAILY;BYHOUR=3;BYMINUTE=0;BYSECOND=0;"}
-__updateSchedule(sourceIntegrations, sourceAuth, 'EXCHANGE_RATES_OLD%7C02.00.0000', payload)
+fp = open('schedule.json','r')
+payload = json.load(fp)
+fp.close()
+
+# __updateSchedule(sourceIntegrations, sourceAuth, 'EXCHANGE_RATES_OLD%7C02.00.0000', payload)
 
 # connection = getConnection(connections['ODI_FILE_PICKUP'], sourceAuth)
 # fp = open('ODI_FILE_PICKUP.json','w')
@@ -60,7 +63,7 @@ __updateSchedule(sourceIntegrations, sourceAuth, 'EXCHANGE_RATES_OLD%7C02.00.000
 # activateIntegration(targetIntegrations, targetAuth, 'SCHEDULE_FBDI%7C03.20.0000', 'true')
 
 # Export integrations 
-exportIntegrations(integrations, sourceIntegrations, sourceAuth)
+exportIntegrations(integrations, targetIntegrations, targetAuth)
 
 # Export lookups 
 # exportLookups(lookups, sourceLookups, sourceAuth)
@@ -71,15 +74,15 @@ exportIntegrations(integrations, sourceIntegrations, sourceAuth)
 # Configure connections
 updateConnections(connections, sourceConnections, sourceAuth, env)
 
-# # Pause integrations
+# Pause integrations
 # pauseSchedule(sourceIntegrations, sourceAuth, 'SCHEDULE_PAAS_METADATA_REFRESH%7C01.80.0000')
 # pauseSchedule(sourceIntegrations, sourceAuth, 'EXCHANGE_RATES_OLD%7C02.00.0000')
 
-# # Deactivate integrations
+# Deactivate integrations
 deactivateIntegrations(integrations, sourceIntegrations, sourceAuth)
 
 # Import integrations
-# importIntegrations(integrations, targetIntegrations, targetAuth)
+importIntegrations(integrations, targetIntegrations, targetAuth)
 
 # Activate integrations and enable tracing
 activateIntegrations(integrations, sourceIntegrations, sourceAuth, 'true')

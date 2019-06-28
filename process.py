@@ -5,12 +5,12 @@ import sys
 import requests
 from requests.exceptions import HTTPError
 
-from functions import __updateSchedule, getIntegrations, getLookups, getConnections, exportIntegrations, updateConnections, deactivateIntegrations, importIntegrations, activateIntegrations
+from functions import __updateSchedule, getIntegrations, getLookups, getConnections, exportIntegrations, updateConnections, deactivateIntegrations, importIntegrations, activateIntegrations, __exportIntegration, __importIntegration, __pauseSchedule, __resumeSchedule
 
 # Begin
 lenArgs = len(sys.argv)
 if (lenArgs < 2) :
-    print('Usage: parse.py <env.json>')
+    print('Usage: process.py <env.json>')
     exit()
 
 # Read env.json file
@@ -57,13 +57,13 @@ fp.close()
 # fp.write(json.dumps(connection, indent=4))
 # fp.close()
 
-# exportIntegration(sourceIntegrations, sourceAuth, 'SCHEDULE_FBDI%7C03.20.0000')
+# __exportIntegration(sourceIntegrations, sourceAuth, 'SCHEDULE_PAAS_METADATA_REFRESH%7C02.00.0000')
 # deactivateIntegration(targetIntegrations, targetAuth, 'SCHEDULE_FBDI%7C03.10.0000')
-# importIntegration(targetIntegrations, targetAuth, 'SCHEDULE_FBDI%7C03.20.0000.iar')
+# __importIntegration(sourceIntegrations, sourceAuth, 'SCHEDULE_PAAS_METADATA_REFRESH%7C02.00.0000.iar')
 # activateIntegration(targetIntegrations, targetAuth, 'SCHEDULE_FBDI%7C03.20.0000', 'true')
 
 # Export integrations 
-exportIntegrations(integrations, targetIntegrations, targetAuth)
+exportIntegrations(integrations, sourceIntegrations, sourceAuth)
 
 # Export lookups 
 # exportLookups(lookups, sourceLookups, sourceAuth)
@@ -72,21 +72,21 @@ exportIntegrations(integrations, targetIntegrations, targetAuth)
 # importLookups(lookups, targLookups, targetAuthAuth)
 
 # Configure connections
-updateConnections(connections, sourceConnections, sourceAuth, env)
+updateConnections(connections, targetIntegrations, targetAuth, env)
 
 # Pause integrations
-# pauseSchedule(sourceIntegrations, sourceAuth, 'SCHEDULE_PAAS_METADATA_REFRESH%7C01.80.0000')
-# pauseSchedule(sourceIntegrations, sourceAuth, 'EXCHANGE_RATES_OLD%7C02.00.0000')
+__pauseSchedule(targetIntegrations, targetAuth, 'SCHEDULE_PAAS_METADATA_REFRESH%7C01.80.0000')
+__pauseSchedule(targetIntegrations, targetAuth, 'EXCHANGE_RATES_OLD%7C02.00.0000')
 
 # Deactivate integrations
-deactivateIntegrations(integrations, sourceIntegrations, sourceAuth)
+deactivateIntegrations(integrations, targetIntegrations, targetAuth)
 
 # Import integrations
 importIntegrations(integrations, targetIntegrations, targetAuth)
 
 # Activate integrations and enable tracing
-activateIntegrations(integrations, sourceIntegrations, sourceAuth, 'true')
+activateIntegrations(integrations, targetIntegrations, targetAuth, 'true')
 
 # # Resume integrations
-# resumeSchedule(sourceIntegrations, sourceAuth, 'SCHEDULE_PAAS_METADATA_REFRESH%7C01.80.0000')
-# resumeSchedule(sourceIntegrations, sourceAuth, 'EXCHANGE_RATES_OLD%7C02.00.0000')
+__resumeSchedule(targetIntegrations, targetAuth, 'SCHEDULE_PAAS_METADATA_REFRESH%7C01.80.0000')
+__resumeSchedule(targetIntegrations, targetAuth, 'EXCHANGE_RATES_OLD%7C02.00.0000')
